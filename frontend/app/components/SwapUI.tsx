@@ -1,10 +1,43 @@
 "use client";
 import { useState } from "react";
+import { createOrder } from "../utils/httpClient";
 
 export function SwapUI({ market }: {market: string}) {
-    const [amount, setAmount] = useState('');
+    const [price, setPrice] = useState('');
+    const [quantity, setQuantity] = useState('');
     const [activeTab, setActiveTab] = useState('buy');
     const [type, setType] = useState('limit');
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async () => {
+        if (!price || !quantity) {
+            alert('Please enter both price and quantity');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const response = await createOrder({
+                market,
+                price,
+                quantity,
+                side: activeTab as 'buy' | 'sell',
+                userId: "1" // In a real app, this would come from authentication
+            });
+            
+            console.log('Order created:', response);
+            alert(`Order ${activeTab} placed successfully!`);
+            
+            // Reset form
+            setPrice('');
+            setQuantity('');
+        } catch (error) {
+            console.error('Error creating order:', error);
+            alert('Failed to place order. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return <div>
         <div className="flex flex-col">
@@ -24,7 +57,7 @@ export function SwapUI({ market }: {market: string}) {
                         <div className="flex flex-col gap-3">
                             <div className="flex items-center justify-between flex-row">
                                 <p className="text-xs font-normal text-baseTextMedEmphasis">Available Balance</p>
-                                <p className="font-medium text-xs text-baseTextHighEmphasis">36.94 USDC</p>
+                                <p className="font-medium text-xs text-baseTextHighEmphasis">10,000,000 {activeTab === 'buy' ? 'INR' : market.split('_')[0]}</p>
                             </div>
                         </div>
                         <div className="flex flex-col gap-2">
@@ -32,10 +65,17 @@ export function SwapUI({ market }: {market: string}) {
                                 Price
                             </p>
                             <div className="flex flex-col relative">
-                                <input step="0.01" placeholder="0" className="h-12 rounded-lg border-2 border-solid border-baseBorderLight bg-[var(--background)] pr-12 text-right text-2xl leading-9 text-[$text] placeholder-baseTextMedEmphasis ring-0 transition focus:border-accentBlue focus:ring-0" type="text" value="134.38" />
+                                <input 
+                                    step="0.01" 
+                                    placeholder="0" 
+                                    className="h-12 rounded-lg border-2 border-solid border-baseBorderLight bg-[var(--background)] pr-12 text-right text-2xl leading-9 text-white placeholder-baseTextMedEmphasis ring-0 transition focus:border-accentBlue focus:ring-0" 
+                                    type="number" 
+                                    value={price}
+                                    onChange={(e) => setPrice(e.target.value)}
+                                />
                                 <div className="flex flex-row absolute right-1 top-1 p-2">
                                     <div className="relative">
-                                        <img src="/usdc.webp" className="w-6 h-6" />
+                                        <span className="text-sm text-slate-400">INR</span>
                                     </div>
                                 </div>
                             </div>
@@ -46,40 +86,62 @@ export function SwapUI({ market }: {market: string}) {
                             Quantity
                         </p>
                         <div className="flex flex-col relative">
-                            <input step="0.01" placeholder="0" className="h-12 rounded-lg border-2 border-solid border-baseBorderLight bg-[var(--background)] pr-12 text-right text-2xl leading-9 text-[$text] placeholder-baseTextMedEmphasis ring-0 transition focus:border-accentBlue focus:ring-0" type="text" value="123" />
+                            <input 
+                                step="0.01" 
+                                placeholder="0" 
+                                className="h-12 rounded-lg border-2 border-solid border-baseBorderLight bg-[var(--background)] pr-12 text-right text-2xl leading-9 text-white placeholder-baseTextMedEmphasis ring-0 transition focus:border-accentBlue focus:ring-0" 
+                                type="number" 
+                                value={quantity}
+                                onChange={(e) => setQuantity(e.target.value)}
+                            />
                             <div className="flex flex-row absolute right-1 top-1 p-2">
                                 <div className="relative">
-                                    <img src="/sol.webp" className="w-6 h-6" />
+                                    <span className="text-sm text-slate-400">{market.split('_')[0]}</span>
                                 </div>
                             </div>
                         </div>
                         <div className="flex justify-end flex-row">
-                            <p className="font-medium pr-2 text-xs text-baseTextMedEmphasis">≈ 0.00 USDC</p>
+                            <p className="font-medium pr-2 text-xs text-baseTextMedEmphasis">≈ {(Number(price) * Number(quantity) || 0).toFixed(2)} INR</p>
                         </div>
                         <div className="flex justify-center flex-row mt-2 gap-3">
-                            <div className="flex items-center justify-center flex-row rounded-full px-[16px] py-[6px] text-xs cursor-pointer bg-baseBackgroundL2 hover:bg-baseBackgroundL3">
+                            <div className="flex items-center justify-center flex-row rounded-full px-[16px] py-[6px] text-xs cursor-pointer bg-baseBackgroundL2 hover:bg-baseBackgroundL3"
+                                 onClick={() => setQuantity((1000 / Number(price || 1) * 0.25).toFixed(2))}>
                                 25%
                             </div>
-                            <div className="flex items-center justify-center flex-row rounded-full px-[16px] py-[6px] text-xs cursor-pointer bg-baseBackgroundL2 hover:bg-baseBackgroundL3">
+                            <div className="flex items-center justify-center flex-row rounded-full px-[16px] py-[6px] text-xs cursor-pointer bg-baseBackgroundL2 hover:bg-baseBackgroundL3"
+                                 onClick={() => setQuantity((1000 / Number(price || 1) * 0.5).toFixed(2))}>
                                 50%
                             </div>
-                            <div className="flex items-center justify-center flex-row rounded-full px-[16px] py-[6px] text-xs cursor-pointer bg-baseBackgroundL2 hover:bg-baseBackgroundL3">
+                            <div className="flex items-center justify-center flex-row rounded-full px-[16px] py-[6px] text-xs cursor-pointer bg-baseBackgroundL2 hover:bg-baseBackgroundL3"
+                                 onClick={() => setQuantity((1000 / Number(price || 1) * 0.75).toFixed(2))}>
                                 75%
                             </div>
-                            <div className="flex items-center justify-center flex-row rounded-full px-[16px] py-[6px] text-xs cursor-pointer bg-baseBackgroundL2 hover:bg-baseBackgroundL3">
+                            <div className="flex items-center justify-center flex-row rounded-full px-[16px] py-[6px] text-xs cursor-pointer bg-baseBackgroundL2 hover:bg-baseBackgroundL3"
+                                 onClick={() => setQuantity((1000 / Number(price || 1)).toFixed(2))}>
                                 Max
                             </div>
                         </div>
                     </div>
-                    <button type="button" className="font-semibold  focus:ring-blue-200 focus:none focus:outline-none text-center h-12 rounded-xl text-base px-4 py-2 my-4 bg-greenPrimaryButtonBackground text-greenPrimaryButtonText active:scale-98" data-rac="">Buy</button>
+                    <button 
+                        type="button" 
+                        className={`font-semibold focus:ring-blue-200 focus:none focus:outline-none text-center h-12 rounded-xl text-base px-4 py-2 my-4 ${
+                            activeTab === 'buy' 
+                                ? 'bg-greenPrimaryButtonBackground text-greenPrimaryButtonText' 
+                                : 'bg-red-600 text-white'
+                        } ${loading ? 'opacity-50 cursor-not-allowed' : 'active:scale-98'}`}
+                        onClick={handleSubmit}
+                        disabled={loading}
+                    >
+                        {loading ? 'Processing...' : (activeTab === 'buy' ? 'Buy' : 'Sell')}
+                    </button>
                     <div className="flex justify-between flex-row mt-1">
                         <div className="flex flex-row gap-2">
                             <div className="flex items-center">
-                                <input className="form-checkbox rounded border border-solid border-baseBorderMed bg-base-950 font-light text-transparent shadow-none shadow-transparent outline-none ring-0 ring-transparent checked:border-baseBorderMed checked:bg-base-900 checked:hover:border-baseBorderMed focus:bg-base-900 focus:ring-0 focus:ring-offset-0 focus:checked:border-baseBorderMed cursor-pointer h-5 w-5" id="postOnly" type="checkbox" data-rac="" />
+                                <input className="form-checkbox rounded border border-solid border-baseBorderMed bg-base-950 font-light text-transparent shadow-none shadow-transparent outline-none ring-0 ring-transparent checked:border-baseBorderMed checked:bg-base-900 checked:hover:border-baseBorderMed focus:bg-base-900 focus:ring-0 focus:ring-offset-0 focus:checked:border-baseBorderMed cursor-pointer h-5 w-5" id="postOnly" type="checkbox" />
                                 <label className="ml-2 text-xs">Post Only</label>
                             </div>
                             <div className="flex items-center">
-                                <input className="form-checkbox rounded border border-solid border-baseBorderMed bg-base-950 font-light text-transparent shadow-none shadow-transparent outline-none ring-0 ring-transparent checked:border-baseBorderMed checked:bg-base-900 checked:hover:border-baseBorderMed focus:bg-base-900 focus:ring-0 focus:ring-offset-0 focus:checked:border-baseBorderMed cursor-pointer h-5 w-5" id="ioc" type="checkbox" data-rac="" />
+                                <input className="form-checkbox rounded border border-solid border-baseBorderMed bg-base-950 font-light text-transparent shadow-none shadow-transparent outline-none ring-0 ring-transparent checked:border-baseBorderMed checked:bg-base-900 checked:hover:border-baseBorderMed focus:bg-base-900 focus:ring-0 focus:ring-offset-0 focus:checked:border-baseBorderMed cursor-pointer h-5 w-5" id="ioc" type="checkbox" />
                                 <label className="ml-2 text-xs">IOC</label>
                             </div>
                         </div>

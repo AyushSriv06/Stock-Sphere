@@ -4,7 +4,6 @@ import { ORDER_UPDATE, TRADE_ADDED } from "../types/index";
 import { CANCEL_ORDER, CREATE_ORDER, GET_DEPTH, GET_OPEN_ORDERS, MessageFromApi, ON_RAMP } from "../types/fromApi";
 import { Fill, Order, Orderbook } from "./Orderbook";
 
-//TODO: Avoid floats everywhere, use a decimal similar to the PayTM project for every currency
 export const BASE_CURRENCY = "INR";
 
 interface UserBalance {
@@ -179,7 +178,6 @@ export class Engine {
     }
 
     createOrder(market: string, price: string, quantity: string, side: "buy" | "sell", userId: string) {
-
         const orderbook = this.orderbooks.find(o => o.ticker() === market)
         const baseAsset = market.split("_")[0];
         const quoteAsset = market.split("_")[1];
@@ -240,7 +238,7 @@ export class Engine {
                 data: {
                     market: market,
                     id: fill.tradeId.toString(),
-                    isBuyerMaker: fill.otherUserId === userId, // TODO: Is this right?
+                    isBuyerMaker: fill.otherUserId === userId,
                     price: fill.price,
                     quantity: fill.qty.toString(),
                     quoteQuantity: (fill.qty * Number(fill.price)).toString(),
@@ -257,7 +255,7 @@ export class Engine {
                 data: {
                     e: "trade",
                     t: fill.tradeId,
-                    m: fill.otherUserId === userId, // TODO: Is this right?
+                    m: fill.otherUserId === userId,
                     p: fill.price,
                     q: fill.qty.toString(),
                     s: market,
@@ -322,7 +320,6 @@ export class Engine {
     updateBalance(userId: string, baseAsset: string, quoteAsset: string, side: "buy" | "sell", fills: Fill[], executedQty: number) {
         if (side === "buy") {
             fills.forEach(fill => {
-                // Update quote asset balance
                 const otherUserBalance = this.balances.get(fill.otherUserId);
                 if (otherUserBalance) {
                     otherUserBalance[quoteAsset].available = otherUserBalance[quoteAsset].available + (fill.qty * Number(fill.price));
@@ -333,7 +330,6 @@ export class Engine {
                     userBalance[quoteAsset].locked = userBalance[quoteAsset].locked - (fill.qty * Number(fill.price));
                 }
 
-                // Update base asset balance
                 if (otherUserBalance) {
                     otherUserBalance[baseAsset].locked = otherUserBalance[baseAsset].locked - fill.qty;
                 }
@@ -345,7 +341,6 @@ export class Engine {
             
         } else {
             fills.forEach(fill => {
-                // Update quote asset balance
                 const otherUserBalance = this.balances.get(fill.otherUserId);
                 if (otherUserBalance) {
                     otherUserBalance[quoteAsset].locked = otherUserBalance[quoteAsset].locked - (fill.qty * Number(fill.price));
@@ -356,7 +351,6 @@ export class Engine {
                     userBalance[quoteAsset].available = userBalance[quoteAsset].available + (fill.qty * Number(fill.price));
                 }
 
-                // Update base asset balance
                 if (otherUserBalance) {
                     otherUserBalance[baseAsset].available = otherUserBalance[baseAsset].available + fill.qty;
                 }
