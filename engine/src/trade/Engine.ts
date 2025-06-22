@@ -93,20 +93,22 @@ export class Engine {
                     if (order.side === "buy") {
                         const price = cancelOrderbook.cancelBid(order)
                         const leftQuantity = (order.quantity - order.filled) * order.price;
-                        //@ts-ignore
-                        this.balances.get(order.userId)[BASE_CURRENCY].available += leftQuantity;
-                        //@ts-ignore
-                        this.balances.get(order.userId)[BASE_CURRENCY].locked -= leftQuantity;
+                        const userBalance = this.balances.get(order.userId);
+                        if (userBalance) {
+                            userBalance[BASE_CURRENCY].available += leftQuantity;
+                            userBalance[BASE_CURRENCY].locked -= leftQuantity;
+                        }
                         if (price) {
                             this.sendUpdatedDepthAt(price.toString(), cancelMarket);
                         }
                     } else {
                         const price = cancelOrderbook.cancelAsk(order)
                         const leftQuantity = order.quantity - order.filled;
-                        //@ts-ignore
-                        this.balances.get(order.userId)[quoteAsset].available += leftQuantity;
-                        //@ts-ignore
-                        this.balances.get(order.userId)[quoteAsset].locked -= leftQuantity;
+                        const userBalance = this.balances.get(order.userId);
+                        if (userBalance) {
+                            userBalance[quoteAsset].available += leftQuantity;
+                            userBalance[quoteAsset].locked -= leftQuantity;
+                        }
                         if (price) {
                             this.sendUpdatedDepthAt(price.toString(), cancelMarket);
                         }
@@ -122,7 +124,7 @@ export class Engine {
                     });
                     
                 } catch (e) {
-                    console.log("Error hwile cancelling order", );
+                    console.log("Error while cancelling order", );
                     console.log(e);
                 }
                 break;
@@ -321,62 +323,69 @@ export class Engine {
         if (side === "buy") {
             fills.forEach(fill => {
                 // Update quote asset balance
-                //@ts-ignore
-                this.balances.get(fill.otherUserId)[quoteAsset].available = this.balances.get(fill.otherUserId)?.[quoteAsset].available + (fill.qty * fill.price);
+                const otherUserBalance = this.balances.get(fill.otherUserId);
+                if (otherUserBalance) {
+                    otherUserBalance[quoteAsset].available = otherUserBalance[quoteAsset].available + (fill.qty * Number(fill.price));
+                }
 
-                //@ts-ignore
-                this.balances.get(userId)[quoteAsset].locked = this.balances.get(userId)?.[quoteAsset].locked - (fill.qty * fill.price);
+                const userBalance = this.balances.get(userId);
+                if (userBalance) {
+                    userBalance[quoteAsset].locked = userBalance[quoteAsset].locked - (fill.qty * Number(fill.price));
+                }
 
                 // Update base asset balance
+                if (otherUserBalance) {
+                    otherUserBalance[baseAsset].locked = otherUserBalance[baseAsset].locked - fill.qty;
+                }
 
-                //@ts-ignore
-                this.balances.get(fill.otherUserId)[baseAsset].locked = this.balances.get(fill.otherUserId)?.[baseAsset].locked - fill.qty;
-
-                //@ts-ignore
-                this.balances.get(userId)[baseAsset].available = this.balances.get(userId)?.[baseAsset].available + fill.qty;
-
+                if (userBalance) {
+                    userBalance[baseAsset].available = userBalance[baseAsset].available + fill.qty;
+                }
             });
             
         } else {
             fills.forEach(fill => {
                 // Update quote asset balance
-                //@ts-ignore
-                this.balances.get(fill.otherUserId)[quoteAsset].locked = this.balances.get(fill.otherUserId)?.[quoteAsset].locked - (fill.qty * fill.price);
+                const otherUserBalance = this.balances.get(fill.otherUserId);
+                if (otherUserBalance) {
+                    otherUserBalance[quoteAsset].locked = otherUserBalance[quoteAsset].locked - (fill.qty * Number(fill.price));
+                }
 
-                //@ts-ignore
-                this.balances.get(userId)[quoteAsset].available = this.balances.get(userId)?.[quoteAsset].available + (fill.qty * fill.price);
+                const userBalance = this.balances.get(userId);
+                if (userBalance) {
+                    userBalance[quoteAsset].available = userBalance[quoteAsset].available + (fill.qty * Number(fill.price));
+                }
 
                 // Update base asset balance
+                if (otherUserBalance) {
+                    otherUserBalance[baseAsset].available = otherUserBalance[baseAsset].available + fill.qty;
+                }
 
-                //@ts-ignore
-                this.balances.get(fill.otherUserId)[baseAsset].available = this.balances.get(fill.otherUserId)?.[baseAsset].available + fill.qty;
-
-                //@ts-ignore
-                this.balances.get(userId)[baseAsset].locked = this.balances.get(userId)?.[baseAsset].locked - (fill.qty);
-
+                if (userBalance) {
+                    userBalance[baseAsset].locked = userBalance[baseAsset].locked - fill.qty;
+                }
             });
         }
     }
 
     checkAndLockFunds(baseAsset: string, quoteAsset: string, side: "buy" | "sell", userId: string, asset: string, price: string, quantity: string) {
+        const userBalance = this.balances.get(userId);
+        if (!userBalance) {
+            throw new Error("User balance not found");
+        }
+
         if (side === "buy") {
-            if ((this.balances.get(userId)?.[quoteAsset]?.available || 0) < Number(quantity) * Number(price)) {
+            if ((userBalance[quoteAsset]?.available || 0) < Number(quantity) * Number(price)) {
                 throw new Error("Insufficient funds");
             }
-            //@ts-ignore
-            this.balances.get(userId)[quoteAsset].available = this.balances.get(userId)?.[quoteAsset].available - (Number(quantity) * Number(price));
-            
-            //@ts-ignore
-            this.balances.get(userId)[quoteAsset].locked = this.balances.get(userId)?.[quoteAsset].locked + (Number(quantity) * Number(price));
+            userBalance[quoteAsset].available = userBalance[quoteAsset].available - (Number(quantity) * Number(price));
+            userBalance[quoteAsset].locked = userBalance[quoteAsset].locked + (Number(quantity) * Number(price));
         } else {
-            if ((this.balances.get(userId)?.[baseAsset]?.available || 0) < Number(quantity)) {
+            if ((userBalance[baseAsset]?.available || 0) < Number(quantity)) {
                 throw new Error("Insufficient funds");
             }
-            //@ts-ignore
-            this.balances.get(userId)[baseAsset].available = this.balances.get(userId)?.[baseAsset].available - (Number(quantity));
-            
-            //@ts-ignore
-            this.balances.get(userId)[baseAsset].locked = this.balances.get(userId)?.[baseAsset].locked + Number(quantity);
+            userBalance[baseAsset].available = userBalance[baseAsset].available - Number(quantity);
+            userBalance[baseAsset].locked = userBalance[baseAsset].locked + Number(quantity);
         }
     }
 
@@ -428,5 +437,4 @@ export class Engine {
             }
         });
     }
-
 }

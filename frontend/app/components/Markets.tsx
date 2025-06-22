@@ -18,7 +18,9 @@ export const Markets = () => {
         <div className="flex flex-col w-full rounded-lg bg-baseBackgroundL1 px-5 py-3">
           <table className="w-full table-auto">
             <MarketHeader />
-            {tickers?.map((m) => <MarketRow market={m} />)}
+            <tbody>
+              {tickers?.map((m, index) => <MarketRow key={index} market={m} />)}
+            </tbody>
           </table>
         </div>
       </div>
@@ -110,9 +112,9 @@ function MarketHeader() {
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
                 className="lucide lucide-arrow-down h-4 w-4"
               >
                 <path d="M12 5v14"></path>

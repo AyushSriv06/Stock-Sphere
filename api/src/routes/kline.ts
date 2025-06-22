@@ -1,6 +1,5 @@
 import { Client } from 'pg';
 import { Router } from "express";
-import { RedisManager } from "../RedisManager";
 
 const pgClient = new Client({
     user: 'postgres',
@@ -22,7 +21,7 @@ klineRouter.get("/", async (req, res) => {
             query = `SELECT * FROM klines_1m WHERE bucket >= $1 AND bucket <= $2`;
             break;
         case '1h':
-            query = `SELECT * FROM klines_1m WHERE  bucket >= $1 AND bucket <= $2`;
+            query = `SELECT * FROM klines_1h WHERE bucket >= $1 AND bucket <= $2`;
             break;
         case '1w':
             query = `SELECT * FROM klines_1w WHERE bucket >= $1 AND bucket <= $2`;
@@ -32,8 +31,10 @@ klineRouter.get("/", async (req, res) => {
     }
 
     try {
-        //@ts-ignore
-        const result = await pgClient.query(query, [new Date(startTime * 1000 as string), new Date(endTime * 1000 as string)]);
+        const result = await pgClient.query(query, [
+            new Date(Number(startTime) * 1000), 
+            new Date(Number(endTime) * 1000)
+        ]);
         res.json(result.rows.map(x => ({
             close: x.close,
             end: x.bucket,
